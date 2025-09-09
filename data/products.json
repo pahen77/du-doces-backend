@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Lacta Chocolate Ao Leite 90g",
+    "price": 6.99,
+    "spec": "unidade",
+    "brand": "Lacta",
+    "category": "chocolate",
+    "promo": true,
+    "image": "/images/chocolate.png"
+  },
+  {
+    "id": 2,
+    "name": "Detergente Neutro 500ml",
+    "price": 3.89,
+    "spec": "unidade",
+    "brand": "Ypê",
+    "category": "limpeza",
+    "promo": false,
+    "image": "/images/limpeza.png"
+  }
+]
