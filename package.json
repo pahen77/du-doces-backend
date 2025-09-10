@@ -1,26 +1,20 @@
 {
   "name": "du-doces-backend",
-  "version": "0.0.1",
-  "private": true,
+  "version": "1.0.0",
   "type": "module",
+  "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "node src/index.js",
+    "start": "node tools/start.js",
+    "prestart": "prisma db push",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
-    "postinstall": "npm run prisma:generate && npm run db:push && npm run db:seed"
+    "postinstall": "npm run prisma:generate"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0",
-    "prisma": "^5.22.0"
+    "cors": "^2.8.5",
+    "prisma": "^5.22.0",
+    "@prisma/client": "^5.22.0"
   }
 }
