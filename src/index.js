@@ -7,26 +7,37 @@ import { PrismaClient, Prisma } from '@prisma/client';
 const app = express();
 const prisma = new PrismaClient();
 
-// ---- Config ----
+// ====== Config ======
 const PORT = process.env.PORT || 3000;
 
-// ORIGIN pode ser uma lista separada por vírgulas
-const ORIGIN_ENV = (process.env.ORIGIN || '*')
+// ORIGIN pode ser múltiplo, separado por vírgulas. Normaliza removendo "/" final.
+const ALLOW_LIST = (process.env.ORIGIN || '')
   .split(',')
-  .map(s => s.trim())
+  .map(s => s.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
-// ---- Middlewares ----
+// Validação dinâmica de origem para CORS (reflete só o que estiver na lista).
+const corsOrigin = (origin, cb) => {
+  // Requests sem header Origin (curl, Postman, healthchecks) são liberados
+  if (!origin) return cb(null, true);
+  const clean = origin.replace(/\/$/, '');
+  if (ALLOW_LIST.includes(clean)) return cb(null, true);
+  return cb(new Error('CORS: origin não permitida'), false);
+};
+
+// ====== Middlewares ======
 app.use(cors({
-  origin: ORIGIN_ENV.length ? ORIGIN_ENV : '*',
+  origin: corsOrigin,
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+app.options('*', cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
 
-// ---- Health ----
-app.get('/health', async (req, res) => {
+// ====== Health ======
+app.get('/health', async (_req, res) => {
   try {
-    // pequena query pra validar conexão com o DB
     await prisma.$queryRaw(Prisma.sql`SELECT 1`);
     res.json({ ok: true, db: true, ts: Date.now() });
   } catch (e) {
@@ -34,15 +45,15 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// ---- Rotas ----
-app.get('/categories', async (req, res, next) => {
+// ====== Rotas ======
+app.get('/categories', async (_req, res, next) => {
   try {
     const categories = await prisma.category.findMany({ orderBy: { name: 'asc' } });
     res.json(categories);
   } catch (e) { next(e); }
 });
 
-app.get('/brands', async (req, res, next) => {
+app.get('/brands', async (_req, res, next) => {
   try {
     const brands = await prisma.brand.findMany({ orderBy: { name: 'asc' } });
     res.json(brands);
@@ -124,23 +135,20 @@ app.get('/shipping/quote', (req, res) => {
   res.json({ price, eta });
 });
 
-// ---- Error handler ----
-app.use((err, req, res, _next) => {
+// ====== Error handler ======
+app.use((err, _req, res, _next) => {
   console.error('API error:', err);
   res.status(500).json({ error: String(err?.message || err) });
 });
 
-// ---- Start ----
+// ====== Start ======
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on :${PORT}`);
 });
 
-// ---- Graceful shutdown ----
-process.on('SIGINT', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
-process.on('SIGTERM', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
+// ====== Graceful shutdown ======
+const shutdown = async () => {
+  try { await prisma.$disconnect(); } finally { process.exit(0); }
+};
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
