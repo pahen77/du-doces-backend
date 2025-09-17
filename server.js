@@ -1,7 +1,12 @@
+// Backend API for Du Doces
+// Moved from repository root to backend/ folder.
+// This file exposes product CRUD endpoints and basic delivery quotes and order creation.
+
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 
 // Inicializa servidor e banco
 const app = express();
@@ -68,6 +73,65 @@ app.delete('/products/:id', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erro ao excluir produto' });
+  }
+});
+
+/* ---------------------------------------------------------------------------
+ * Entregas (mock)
+ * Endpoints para cotar e criar pedidos de entrega. Estes endpoints retornam
+ * valores simulados. Quando você quiser integrar com a API real da Lalamove,
+ * substitua a lógica de cotação e criação por chamadas HTTP assinadas.
+ *--------------------------------------------------------------------------*/
+
+// Cotação de entrega
+app.post('/delivery/quote', async (req, res) => {
+  try {
+    const { to, itemsTotal } = req.body || {};
+    const cep = String(to?.cep || '').replace(/\D/g, '');
+    if (!cep || cep.length !== 8) {
+      return res.status(400).json({ error: 'CEP inválido' });
+    }
+    const total = Number(itemsTotal || 0);
+    const fee = Math.max(7.9, Math.min(39.9, total * 0.08));
+    return res.json({
+      currency: 'BRL',
+      fee: Number(fee.toFixed(2)),
+      etaMinutes: 45,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Falha ao cotar entrega' });
+  }
+});
+
+// Criar pedido de entrega
+app.post('/delivery/create', async (req, res) => {
+  try {
+    const { to, cart } = req.body || {};
+    const cep = String(to?.cep || '').replace(/\D/g, '');
+    if (!Array.isArray(cart) || cart.length === 0) {
+      return res.status(400).json({ error: 'Carrinho vazio' });
+    }
+    if (!cep || cep.length !== 8) {
+      return res.status(400).json({ error: 'CEP inválido' });
+    }
+    const orderId = 'DLV-' + crypto.randomUUID().slice(0, 8).toUpperCase();
+    // TODO: persistir orderId e payload no banco (prisma)
+    return res.status(201).json({ orderId, status: 'created' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Falha ao criar entrega' });
+  }
+});
+
+// Consultar status do pedido de entrega (mock)
+app.get('/delivery/status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    return res.json({ orderId: id, status: 'driver_assigned' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Falha ao consultar status' });
   }
 });
 
